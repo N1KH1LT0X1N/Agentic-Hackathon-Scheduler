@@ -2,7 +2,183 @@ generator client {
   provider = "prisma-client-js"
 }
 
- datasource db {
+datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+enum LocationType {
+  ONLINE
+  OFFLINE
+  HYBRID
+}
+
+enum TeamLocationPreference {
+  ONLINE_ONLY
+  OFFLINE_ONLY
+  BOTH
+}
+
+enum TeamHackathonStatus {
+  WATCHING
+  REGISTERED
+  BUILDING
+  SUBMITTED
+  SKIPPED
+}
+
+enum PastResult {
+  NONE
+  PARTICIPATED
+  SHORTLISTED
+  WON
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  BLOCKED
+  DONE
+}
+
+model Platform {
+  id         String      @id @default(uuid())
+  name       String
+  baseUrl    String
+  isActive   Boolean     @default(true)
+  hackathons Hackathon[]
+}
+
+model Hackathon {
+  id                   String           @id @default(uuid())
+  platformId           String
+  platform             Platform         @relation(fields: [platformId], references: [id])
+  externalId           String
+  title                String
+  url                  String
+  startDate            DateTime?
+  endDate              DateTime?
+  registrationDeadline DateTime?
+  timezone             String?
+  locationType         LocationType
+  city                 String?
+  country              String?
+  prizePool            Float?
+  currency             String?
+  themes               String[]
+  rawDescription       String
+  firstSeenAt          DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+  teamHackathons       TeamHackathon[]
+
+  @@unique([platformId, externalId])
+}
+
+model Team {
+  id          String   @id @default(uuid())
+  name        String
+  slug        String   @unique
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  users       User[]
+  preferences TeamPreferences?
+  hackathons  TeamHackathon[]
+  eventLogs   EventLog[]
+}
+
+model User {
+  id             String   @id @default(uuid())
+  teamId         String
+  team           Team     @relation(fields: [teamId], references: [id])
+  name           String
+  email          String   @unique
+  hashedPassword String
+  timeZone       String
+  skills         String[] @default([])
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  assignedTasks  Task[]   @relation("TaskAssignee")
+  eventLogs      EventLog[]
+}
+
+model TeamPreferences {
+  id                    String                  @id @default(uuid())
+  teamId                String                  @unique
+  team                  Team                    @relation(fields: [teamId], references: [id])
+  preferredThemes       String[]                @default([])
+  minPrizeAmount        Float?
+  locationPreference    TeamLocationPreference  @default(BOTH)
+  maxParallelHackathons Int                     @default(1)
+}
+
+model TeamHackathon {
+  id             String             @id @default(uuid())
+  teamId         String
+  team           Team               @relation(fields: [teamId], references: [id])
+  hackathonId    String
+  hackathon      Hackathon          @relation(fields: [hackathonId], references: [id])
+  status         TeamHackathonStatus @default(WATCHING)
+  priorityScore  Float               @default(0)
+  pastResult     PastResult          @default(NONE)
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  project        Project?
+  tasks          Task[]
+  requirements   HackathonRequirement[]
+  eventLogs      EventLog[]
+
+  @@unique([teamId, hackathonId])
+}
+
+model Project {
+  id               String        @id @default(uuid())
+  teamHackathonId  String        @unique
+  teamHackathon    TeamHackathon @relation(fields: [teamHackathonId], references: [id])
+  name             String
+  shortDescription String
+  techStack        String[]      @default([])
+  githubRepoUrl    String?
+  demoUrl          String?
+  pitchDeckUrl     String?
+  coverImageUrl    String?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+}
+
+model Task {
+  id               String        @id @default(uuid())
+  teamHackathonId  String
+  teamHackathon    TeamHackathon @relation(fields: [teamHackathonId], references: [id])
+  title            String
+  description      String
+  assigneeUserId   String?
+  assignee         User?        @relation("TaskAssignee", fields: [assigneeUserId], references: [id])
+  status           TaskStatus   @default(TODO)
+  dueAt            DateTime?
+  category         String       @default("general")
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+}
+
+model HackathonRequirement {
+  id               String      @id @default(uuid())
+  teamHackathonId  String
+  teamHackathon    TeamHackathon @relation(fields: [teamHackathonId], references: [id])
+  rawText          String
+  checklistJson    Json
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+}
+
+model EventLog {
+  id               String      @id @default(uuid())
+  teamId           String
+  team             Team        @relation(fields: [teamId], references: [id])
+  userId           String?
+  user             User?       @relation(fields: [userId], references: [id])
+  teamHackathonId  String?
+  teamHackathon    TeamHackathon? @relation(fields: [teamHackathonId], references: [id])
+  type             String
+  metadata         Json
+  createdAt        DateTime    @default(now())
 }
