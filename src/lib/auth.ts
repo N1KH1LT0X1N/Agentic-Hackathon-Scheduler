@@ -2,6 +2,7 @@ import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { prisma } from './prisma';
+import { UnauthorizedError } from './api-errors';
 
 const SESSION_COOKIE = 'hc_session';
 const SESSION_SECRET = process.env.SESSION_SECRET ?? 'hackathon-copilot-secret';
@@ -107,11 +108,11 @@ export async function getCurrentUser() {
 export async function requireUser(request: NextRequest) {
   const session = getSessionFromRequest(request);
   if (!session) {
-    throw new Error('UNAUTHORIZED');
+    throw new UnauthorizedError('No valid session found');
   }
   const user = await prisma.user.findUnique({ where: { id: session.userId } });
   if (!user) {
-    throw new Error('UNAUTHORIZED');
+    throw new UnauthorizedError('User not found');
   }
   return { user, teamId: session.teamId };
 }
