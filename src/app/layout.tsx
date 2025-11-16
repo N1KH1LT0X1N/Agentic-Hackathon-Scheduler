@@ -4,6 +4,7 @@ import { Inter } from 'next/font/google';
 import './globals.css';
 import { getCurrentUser } from '@/lib/auth';
 import { LogoutButton } from '@/components/logout-button';
+import { ClientErrorBoundary } from '@/components/client-error-boundary';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -67,7 +68,9 @@ export default async function RootLayout({
               </div>
             </div>
           </header>
-          <main className="mx-auto max-w-6xl px-6 py-8">{children}</main>
+          <main className="mx-auto max-w-6xl px-6 py-8">
+            <ClientErrorBoundary>{children}</ClientErrorBoundary>
+          </main>
         </div>
       </body>
     </html>
